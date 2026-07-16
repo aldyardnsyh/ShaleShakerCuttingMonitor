@@ -1,211 +1,240 @@
 # Shale Shaker Cutting Estimation Dashboard
 
-Dashboard web full-stack untuk monitoring/estimasi cutting shale shaker dari video
-menggunakan semantic segmentation (**MobileViT** / **BiSeNet v2**), disajikan via
-**ONNX Runtime** (CPU, FP32). Parameter ROI (4 sudut perspektif), pilihan model, dan
-threshold dapat disesuaikan dari UI. Dirancang untuk resource terbatas
-(target VPS **2 vCPU / 2 GB RAM**, CPU-only).
+> Real-time cutting (rock cuttings) estimation on shale shakers using semantic segmentation.  
+> Powered by MobileViT / BiSeNet v2 via ONNX Runtime on CPU.
 
-Terinspirasi paper SPE-194084-PA (klasifikasi volume cutting real-time via video),
-namun memakai segmentasi sehingga bisa menghitung **% luas area cutting** dan
-**jumlah stone** per frame.
+[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-success.svg)]()
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)]()
+[![ONNX](https://img.shields.io/badge/ONNX-Runtime-orange.svg)]()
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)]()
 
-## Tampilan (UI/UX)
+---
 
-Desain **terang, aksen oranye, minimalis & profesional** (production-ready):
-- **Header bar oranye**: tombol collapse sidebar + breadcrumb (Cutting Monitoring › halaman),
-  **jam server + jam lokal** (responsif, menyusut/turun pada layar kecil), dan **toggle tema (terang/gelap)**.
-- **Sidebar terang** yang bisa diciutkan (Dashboard / Settings / Riwayat / Panduan), status aktif oranye.
-- **Kartu putih** (rounded, shadow halus), **tombol oranye**, dan panel **"Last Value"** oranye
-  yang menampilkan coverage% terkini — mengikuti guideline desain (`eye log.png`).
-- **Live View (fit-viewport, tanpa scroll)**: seluruh informasi tampil dalam satu layar tanpa
-  perlu menggulir — video + grafik tren di baris atas, info/metrik/kontrol + panel **Last Value**
-  di baris bawah. Tampilan bersifat **frame-accurate**: video di-seek tepat ke frame yang
-  **benar-benar dianalisis** dan mask digambar tanpa ekstrapolasi, sehingga frame & mask selalu
-  cocok (gerakan bisa terlihat patah-patah, tapi faithful/real — tidak ada kesan mask tertinggal).
-  Tersedia tombol **Preview Area Deteksi** (modal zoom ROI, sinkron frame) dan **grafik tren vertikal**.
-- **Metrik mengikuti pemutaran video**: coverage%, jumlah stone, Playback/Detect FPS, dan grafik
-  digerakkan oleh posisi pemutaran (playhead). Tombol **Jeda/Lanjut** (di kiri tombol Stop) menjeda
-  video **sekaligus menghentikan deteksi di backend** (hemat CPU) — bukan sekadar membekukan tampilan.
-  Saat video **di-pause atau selesai**, semua tampilan **berhenti otomatis (freeze)**. Tombol **Stop**
-  menghentikan sesi (data dibuang) dan menonaktifkan Jeda/Stop.
-- **Tampilan video bersih**: kontrol bawaan (volume, fullscreen, unduh, PiP) disembunyikan; deteksi
-  selalu **dibatasi di dalam area ROI** (mask di-clip ke poligon ROI). Saat berpindah tab lalu kembali,
-  video melanjutkan di posisi terakhir dan **tetap dalam keadaan jeda** bila tadi dijeda.
-- **Editor ROI dengan zoom-preview**: saat menggeser titik sudut, muncul mini-preview ter-zoom 3×
-  beserta koordinatnya agar batas geseran terlihat jelas.
-- Mode gelap tersedia via toggle (disimpan di localStorage).
+## Table of Contents
 
-Sistem desain ada di `frontend/tailwind.config.ts` (palet `brand` oranye) + `frontend/app/globals.css`
-(class `.card`, `.btn-primary/outline/danger/muted`, `.input`, `.badge`, `.last-value`).
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Model Conversion](#1-model-conversion-offline)
+  - [Development](#2-local-development)
+  - [Docker Deployment](#3-docker-deployment-vps)
+- [Usage Guide](#usage-guide)
+- [API Documentation](#api-documentation)
+- [Running Tests](#running-tests)
+- [Project Structure](#project-structure)
+- [License](#license)
 
+---
 
-## Arsitektur
+## Overview
+
+This web application monitors and estimates **cutting volume** on shale shakers from video input.  
+Inspired by the methodology in **SPE-194084-PA** (real-time cutting volume classification via video), this project uses **semantic segmentation** instead of classification — enabling pixel-level measurement of cutting coverage and stone count.
+
+The system is designed to run on resource-constrained hardware (target: **2 vCPU / 2 GB RAM VPS, CPU-only**) using ONNX Runtime instead of PyTorch.
+
+---
+
+## Features
+
+- **Video-based Analysis** — Upload recorded video or use pre-loaded demo videos
+- **Customizable ROI** — Define the detection area with 4 draggable perspective-corner points
+- **Live Detection** — Frame-accurate overlay with motion-compensated masks
+- **Grid Coverage Metric** — Quadrat-based percentage coverage (research-backed methodology)
+- **Multiple Models** — MobileViT (accurate) or BiSeNet v2 (fast), switchable from UI
+- **Historical Records** — Session history with interactive trend charts
+- **Export** — CSV data export and professional PDF report generation
+- **Auto-cleanup** — Old session videos automatically purged after configurable retention period
+- **Dark Mode** — Light/dark theme toggle with persistence
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | **Next.js 14** (static export), **Tailwind CSS**, **Recharts** |
+| Backend | **FastAPI**, **uvicorn** (1 worker), **SQLAlchemy** |
+| ML Runtime | **ONNX Runtime** (CPU, FP32) |
+| Computer Vision | **OpenCV** (headless) |
+| Database | **SQLite** (via SQLAlchemy) |
+| PDF | **ReportLab** |
+| Container | **Docker** + **Caddy** (reverse proxy, auto HTTPS) |
+
+---
+
+## Architecture
 
 ```
 Browser (Next.js static export)
-   │  REST + WebSocket
+   │  REST + WebSocket (same origin)
    ▼
 FastAPI (uvicorn, 1 worker)
-   ├─ Inference core   : ONNX Runtime (FP32, CPU, intra_op = jumlah core)
-   ├─ ROI warp         : OpenCV perspective transform (4 sudut → 224×640)
-   ├─ Refine           : morfologi + Canny (opsional, toggle)
-   ├─ Tracking         : Kalman (kecepatan per blob, tanpa ID) untuk motion-comp mask
-   ├─ Background worker : decode (stride) → warp → infer → refine → metrics → blobs
-   │                     → buffer di memori → (saat selesai) bulk insert DB + tulis CSV
-   ├─ WebSocket         : /ws/sessions/{id} streaming blobs (mask) + metrik live
-   ├─ Export            : CSV (otomatis) + PDF (reportlab: ringkasan + chart)
-   └─ SQLite            : presets / sessions / measurements (time-series)
+   ├─ Inference      : ONNX Runtime (FP32, CPU)
+   ├─ ROI Warp       : OpenCV perspective transform (4 corners → 224×640)
+   ├─ Refine         : Morphology + Canny (optional toggle)
+   ├─ Tracking       : Kalman filter (velocity per blob, no ID)
+   ├─ Worker         : decode → warp → infer → refine → metrics
+   │                  → memory buffer → bulk DB insert + CSV at completion
+   ├─ WebSocket      : /ws/sessions/{id} — real-time blob + metric stream
+   ├─ Export         : CSV (auto) + PDF (reportlab)
+   └─ SQLite         : presets / sessions / measurements
 ```
 
-Konversi `.pt → .onnx` dilakukan **offline sekali** (folder `ml/`). FP32 ONNX
-identik secara numerik dengan model PyTorch (tervalidasi, diff < 1e-4).
+---
 
-## Struktur
+## Getting Started
 
-| Folder | Isi |
-|--------|-----|
-| `ml/` | Definisi model + skrip konversi/validasi/kuantisasi ONNX (butuh PyTorch, jalan lokal). |
-| `backend/` | FastAPI + ONNX Runtime + SQLite. |
-| `frontend/` | Next.js (static export) + Tailwind + recharts. |
-| `data/source_videos/` | Video demo pre-loaded (di-bake ke Docker image, satu klik pakai di Dashboard). |
-| `Dockerfile` | Multi-stage: build FE static + bake source videos → image backend. |
-| `docker-compose.yml` | Orkestrasi + batas resource 2 vCPU / 1.8 GB. |
+### Prerequisites
 
-## Langkah 0 — Siapkan model ONNX (sekali)
+- **Python 3.11+** (for model conversion and backend dev)
+- **Node.js 20+** (for frontend dev)
+- **Docker + Docker Compose v2** (for production deployment)
+- Model weights: `mobilevit_final.pt` and/or `bisenetv2_final.pt`
 
-Letakkan bobot `mobilevit_final.pt` & `bisenetv2_final.pt` di `ml/weights/`
-(atau biarkan skrip mengambil dari folder Results training), lalu:
+### 1. Model Conversion (offline)
+
+Run once to convert PyTorch weights to ONNX:
 
 ```bash
 cd ml
-python -m venv .venv && .venv\Scripts\activate      # Windows
+python -m venv .venv && source .venv/bin/activate   # Linux
+# or .\.venv\Scripts\activate                        # Windows
+
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
-python convert_to_onnx.py        # -> ml/onnx/{mobilevit,bisenetv2}.onnx + model_meta.json
-python validate_parity.py        # cek "akurasi identik (no degradation)"
+
+python convert_to_onnx.py        # → ml/onnx/{mobilevit,bisenetv2}.onnx + model_meta.json
+python validate_parity.py        # Verify PyTorch vs ONNX parity (< 1e-4 diff)
 ```
 
-## Menjalankan — Development
+### 2. Local Development
 
-Backend (terminal 1):
+**Backend:**
 ```bash
 cd backend
-python -m venv .venv && .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend (terminal 2):
+**Frontend (separate terminal):**
 ```bash
 cd frontend
-copy .env.local.example .env.local      # set NEXT_PUBLIC_API_BASE=http://localhost:8000
+cp .env.local.example .env.local   # Set NEXT_PUBLIC_API_BASE=http://localhost:8000
 npm install
-npm run dev                              # http://localhost:3000
+npm run dev                         # → http://localhost:3000
 ```
 
-## Menjalankan — Production lokal (tanpa Docker)
-
-Build FE statis dan sajikan langsung dari backend:
-```bash
-cd frontend && npm run build             # menghasilkan frontend/out
-# salin hasil build ke folder static backend:
-xcopy /E /I /Y out ..\backend\app\static
-cd ..\backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-# buka http://localhost:8000  (UI + API satu origin)
-```
-
-## Menjalankan — Docker / VPS (rekomendasi)
-
-Prasyarat: Docker + Docker Compose v2, `ml/onnx/` sudah berisi model, dan domain
-sudah diarahkan (DNS A record) ke IP VPS.
+### 3. Docker Deployment (VPS)
 
 ```bash
-# 1. Install Docker (jika belum)
+# Install Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 
-# 2. Clone project ke VPS
-git clone <repo-url> shale-shaker-dashboard
-cd shale-shaker-dashboard
+# Clone & deploy
+cd /opt
+git clone https://github.com/aldyardnsyh/ShaleShakerCuttingMonitor.git
+cd ShaleShakerCuttingMonitor
 
-# 3. Setup environment
 cp .env.example .env
-# Edit .env → isi DOMAIN=domain-anda.com (wajib!)
+# Edit .env — set DOMAIN=your-domain.com (required for HTTPS)
 
-# 4. Generate Caddyfile otomatis dari .env
-bash setup.sh
-
-# 5. Build & jalankan
-docker compose up -d --build
-
-# Aplikasi tersedia di https://domain-anda.com (HTTPS otomatis via Caddy + Let's Encrypt)
-# Caddy otomatis renew sertifikat TLS setiap 90 hari (zero maintenance)
+bash setup.sh                     # Generate Caddyfile
+docker compose up -d --build       # Build & run
 ```
 
-- App hanya listen di internal Docker network (`app:8000`). Port 80/443 diekspos
-  oleh Caddy untuk reverse proxy + auto-HTTPS. Tidak ada port yang terbuka langsung
-  ke aplikasi.
-- Model di-*mount* read-only dari `./ml/onnx` ke `/models`; data (SQLite + upload)
-  persisten di volume `app-data` (`/data`).
-- Video sumber (demo) di-*bake* ke dalam image dari `data/source_videos/` — tidak perlu
-  copy manual ke VPS.
-- **Auto-cleanup**: setiap jam, video sesi >3 hari otomatis dihapus (konfigurasi via
-  `CLEANUP_RETENTION_DAYS` di `.env`).
-- Batas resource: `cpus: 2`, `mem_limit: 1800m` (sesuai VPS Starter 2 vCPU / 2 GB).
+The app is now available at `https://your-domain.com` with automatic HTTPS via Caddy + Let's Encrypt.
 
-### Catatan VPS 2 GB
-- Serving memakai ONNX Runtime (bukan PyTorch) agar muat di RAM kecil.
-- Default model **MobileViT** (akurasi terbaik). Untuk kecepatan, pilih **BiSeNet v2**
-  di menu **Settings** (lebih ringan & cepat di CPU).
-- Naikkan **stride** (mis. 3–5) untuk near-real-time; objek cutting tidak berubah
-  drastis antar-frame. Stride adalah pengungkit kecepatan paling efektif di CPU.
+---
 
-## Test
+## Usage Guide
+
+| Step | Action | Description |
+|------|--------|-------------|
+| 1 | **Select Video** | Upload an MP4 file or click a pre-loaded demo video |
+| 2 | **Set ROI** | Drag 4 corner points (TL, TR, BR, BL) to define the shale shaker surface |
+| 3 | **Configure** | Adjust model, threshold, stride, grid parameters in Settings |
+| 4 | **Start Detection** | Click "Start Deteksi Live" — real-time masks and metrics appear |
+| 5 | **Review History** | Browse sessions with trend charts, export CSV/PDF reports |
+
+Sessions older than 3 days are automatically cleaned up (configurable via `CLEANUP_RETENTION_DAYS`).
+
+---
+
+## API Documentation
+
+### REST Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/health` | Server health + timezone |
+| GET | `/api/models` | Available models + metadata |
+| GET/POST | `/api/presets` | Configuration presets |
+| POST | `/api/sessions` | Create analysis session |
+| GET | `/api/sessions/{id}` | Session details + summary |
+| POST | `/api/sessions/{id}/upload` | Upload video file |
+| POST | `/api/sessions/{id}/stop` | Cancel running session |
+| GET | `/api/sessions/{id}/measurements` | Time-series measurement data |
+| GET | `/api/sessions/{id}/video` | Stream uploaded video |
+| GET | `/api/sessions/{id}/tracks` | Per-frame blobs + velocity |
+| GET | `/api/sessions/{id}/export.csv` | CSV download |
+| GET | `/api/sessions/{id}/export.pdf` | PDF report download |
+| DELETE | `/api/sessions/{id}` | Delete session + files |
+| GET | `/api/source-videos` | List pre-loaded demo videos |
+| POST | `/api/roi/analyze` | Preview rectified ROI + mask |
+
+### WebSocket
+
+**Path:** `ws://host/ws/sessions/{id}`
+
+Streams per-frame detection payload:
+```json
+{
+  "frame_idx": 42,
+  "t": 1.68,
+  "coverage_pct": 4.2,
+  "stone_count": 7,
+  "fps": 0.5,
+  "blobs": [{ "poly": [[x1,y1],...], "vx": 0.3, "vy": 1.2 }]
+}
+```
+
+Clients can send `{"action": "pause"}` / `{"action": "resume"}` to control processing.
+
+---
+
+## Running Tests
 
 ```bash
-cd backend && pytest -q            # 36 tests
-python scripts/smoke_test.py       # end-to-end dengan video nyata (butuh ml/onnx)
+cd backend
+pytest -q              # 36 tests
+python scripts/smoke_test.py   # End-to-end with real video (requires ml/onnx)
 ```
 
-## Alur pemakaian
+---
 
-Workflow ada dalam **satu halaman Dashboard**:
-1. **Pilih video** — unggah file video, atau klik **video sumber** (demo pre-loaded) yang
-   tampil otomatis di bawah area upload. Frame pertama muncul sebagai acuan ROI.
-2. **Tentukan ROI** — geser 4 titik (TL, TR, BR, BL) langsung di atas frame; saat menggeser muncul
-   **mini-preview ter-zoom** untuk melihat batas posisi titik.
-3. **Start Deteksi Live** — tampilan **fit-viewport tanpa scroll**: video diputar mulus + overlay mask
-   diperbarui live; kartu **Last Value** menampilkan coverage% terkini, plus jumlah stone & FPS — semua
-   **mengikuti pemutaran video** dan **berhenti otomatis saat video di-pause/selesai**. Tombol **Stop**
-   (buang data), **Sesi baru**, dan **Preview Area Deteksi** (modal zoom ROI, frame real-time sinkron
-   playhead). Saat video selesai, proses berhenti & tersimpan otomatis (DB + CSV); ada tombol **Putar ulang**.
-4. **Settings** — model, threshold, stride (preset kecepatan), parameter grid coverage,
-   toggle penghalusan tepi (Canny), **pratinjau interaktif** (grid/τ/threshold dengan coverage% live),
-   **dua tombol setelan terbaik per model** (MobileViT & BiSeNet v2), dan info **"i"** pada tiap parameter.
-5. **Riwayat** — daftar sesi (aksi **Hapus** via modal konfirmasi berstyle), ringkasan + **grafik tren
-   gabungan** (Coverage % oranye + Stone Count biru, tooltip Frame/Coverage/Stone), unduh **CSV** &
-   **PDF laporan profesional** (berlogo, tabel ringkasan + tren). Sesi yang sedang berjalan tidak dapat dihapus.
-6. **Panduan** — **walkthrough bertahap** cara penggunaan (bisa dilewati kapan saja, langkah akhir
-   langsung mulai ke Dashboard).
+## Project Structure
 
-> Parameter yang diatur (ROI/model/threshold/stride/grid/refine) disimpan di `localStorage`
-> dan tetap ada saat berpindah tab.
->
-> Video sesi >3 hari otomatis dihapus dari disk (background task tiap jam); data sesi tetap
-> tersimpan di database untuk keperluan audit/riwayat.
+```
+ShaleShakerCuttingMonitor/
+├── ml/                  # Model definitions, ONNX conversion scripts
+├── backend/             # FastAPI app (api/, core/, db/, workers/)
+├── frontend/            # Next.js 14 app (app/, components/, lib/)
+├── data/source_videos/  # Pre-loaded demo videos
+├── Dockerfile           # Multi-stage build
+├── docker-compose.yml   # Services (app + caddy reverse proxy)
+├── Caddyfile            # Caddy reverse proxy config
+└── setup.sh             # Generate Caddyfile from .env
+```
 
-## Kuantisasi INT8 (opsional, eksperimen)
+---
 
-`ml/quantize_int8.py` menghasilkan model INT8 + laporan FP32 vs INT8
-(`ml/onnx/int8/QUANT_REPORT.md`). Temuan pada perangkat keras uji: speedup CPU
-hanya ~1.1–1.2× dan mask MobileViT menyimpang cukup jauh dari FP32 (IoU ~0.50),
-sehingga **default tetap FP32** dan INT8 tidak diaktifkan pada serving.
+## License
 
-## Keamanan
-
-Aplikasi ini **tidak memiliki autentikasi** (akses dibatasi via URL internal sesuai
-kebutuhan). Bila diekspos ke internet publik, tambahkan minimal **basic-auth / IP
-allowlist** pada reverse proxy (mis. nginx/Caddy) di depan layanan ini, dan
-pertimbangkan TLS (wss/https) agar WebSocket overlay terenkripsi.
+Internal use. Not licensed for commercial redistribution.
