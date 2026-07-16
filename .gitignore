@@ -40,5 +40,6 @@ Tugas Akhir/
 .claude/
 skills-lock.json
 
-# Temp files
+# Internal dev docs
+HANDOFF.md
 ~$*.docx
