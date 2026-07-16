@@ -27,8 +27,10 @@ __pycache__/
 Thumbs.db
 .DS_Store
 
-# Data (generated at runtime)
-/data/
+# Data (runtime only — keep source_videos tracked for Docker build)
+/data/uploads/
+/data/exports/
+/data/*.db
 
 # Training notebooks & results (large, not needed for deployment)
 Notebook/
