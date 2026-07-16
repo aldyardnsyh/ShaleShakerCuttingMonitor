@@ -1,0 +1,6 @@
+# Replace <your-domain> with your actual domain before running docker compose up.
+# Caddy will automatically obtain TLS certificates from Let's Encrypt.
+
+<your-domain> {
+    reverse_proxy app:8000
+}

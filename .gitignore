@@ -1,0 +1,44 @@
+# Environments
+.venv/
+.env
+frontend/.env.local
+backend/.venv/
+
+# Build output
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+backend/.pytest_cache/
+backend/app/__pycache__/
+backend/app/**/__pycache__/
+backend/app/static/
+ml/__pycache__/
+ml/**/__pycache__/
+ml/onnx/int8/
+
+# Model weights
+ml/weights/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Data (generated at runtime)
+/data/
+
+# Training notebooks & results (large, not needed for deployment)
+Notebook/
+Results/
+Tugas Akhir/
+
+# Agent config
+.agents/
+.claude/
+skills-lock.json
+
+# Temp files
+~$*.docx

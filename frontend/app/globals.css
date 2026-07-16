@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-[#f4f5f7] text-slate-800 antialiased;
+}
+.dark body {
+  @apply bg-slate-900 text-slate-100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+*:focus-visible {
+  outline: 2px solid #F47A20;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-white border border-slate-200 rounded-xl shadow-card p-5;
+  }
+  .dark .card {
+    @apply bg-slate-800 border-slate-700;
+  }
+  .card-title {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3;
+  }
+  .dark .card-title {
+    @apply text-slate-400;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] min-w-[44px];
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-outline {
+    @apply btn border border-brand text-brand bg-white hover:bg-brand-light;
+  }
+  .dark .btn-outline {
+    @apply bg-transparent hover:bg-brand/10;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white hover:bg-rose-700;
+  }
+  .btn-muted {
+    @apply btn bg-slate-100 text-slate-700 hover:bg-slate-200;
+  }
+  .dark .btn-muted {
+    @apply bg-slate-700 text-slate-200 hover:bg-slate-600;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/30;
+  }
+  .dark .input {
+    @apply border-slate-600 bg-slate-900 text-slate-100;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* The tall orange "Last Value" panel (per design guideline) */
+  .last-value {
+    @apply rounded-xl bg-brand text-white flex flex-col items-center justify-center p-6 text-center;
+  }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(100%) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-toast-in {
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

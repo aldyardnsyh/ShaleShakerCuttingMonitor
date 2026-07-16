@@ -1,0 +1,50 @@
+# Production-style compose: app + Caddy reverse proxy with auto HTTPS.
+# Multi-stage build (frontend static -> backend image) via root Dockerfile.
+# Set DOMAIN=<your-domain.com> in .env before first run.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shale-shaker-dashboard:latest
+    container_name: shale-shaker
+    expose:
+      - "8000"
+    environment:
+      - APP_TIMEZONE=${APP_TIMEZONE:-Asia/Jakarta}
+      - STATIC_DIR=/app/static
+      - MODELS_DIR=/models
+      - DATA_DIR=/data
+      - ORT_INTRA_OP_THREADS=${ORT_INTRA_OP_THREADS:-2}
+      - ORT_INTER_OP_THREADS=${ORT_INTER_OP_THREADS:-1}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-mobilevit}
+      - DEFAULT_STRIDE=${DEFAULT_STRIDE:-3}
+      - MIN_STONE_AREA=${MIN_STONE_AREA:-8}
+    volumes:
+      - ./ml/onnx:/models:ro
+      - app-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1800m
+    mem_limit: 1800m
+    cpus: 2
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: shale-shaker-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+  caddy-data:

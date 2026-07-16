@@ -1,0 +1,69 @@
+{
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "default_model": "mobilevit",
+  "models": {
+    "mobilevit": {
+      "name": "mobilevit",
+      "display_name": "MobileViT",
+      "onnx_file": "mobilevit.onnx",
+      "num_classes": 2,
+      "input_h": 224,
+      "input_w": 640,
+      "fg_threshold": 0.65,
+      "roi_src": [
+        [
+          760.0,
+          650.0
+        ],
+        [
+          1300.0,
+          614.0
+        ],
+        [
+          1315.0,
+          795.0
+        ],
+        [
+          780.0,
+          845.0
+        ]
+      ]
+    },
+    "bisenetv2": {
+      "name": "bisenetv2",
+      "display_name": "BiSeNet v2",
+      "onnx_file": "bisenetv2.onnx",
+      "num_classes": 2,
+      "input_h": 224,
+      "input_w": 640,
+      "fg_threshold": 0.5,
+      "roi_src": [
+        [
+          760.0,
+          650.0
+        ],
+        [
+          1300.0,
+          614.0
+        ],
+        [
+          1315.0,
+          795.0
+        ],
+        [
+          780.0,
+          845.0
+        ]
+      ]
+    }
+  }
+}

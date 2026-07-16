@@ -1,0 +1,8 @@
+# Offline conversion environment ONLY (run locally, not on the VPS).
+# Install torch CPU build first, e.g.:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# then:  pip install -r ml/requirements.txt
+timm==1.0.12
+onnx==1.17.0
+onnxruntime==1.20.1
+numpy==1.26.4
