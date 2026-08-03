@@ -151,15 +151,28 @@ export default function DashboardPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 truncate">{d.name}</h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
                     Persentase cutting menutupi area shale shaker
-                    {d.stopped
-                      ? <span className="text-rose-500 font-medium"> · dihentikan</span>
-                      : d.detectionDone
-                        ? <span className="text-emerald-600 font-medium"> · selesai &amp; tersimpan</span>
-                        : d.paused
-                          ? <span className="text-amber-500 font-medium"> · dijeda</span>
-                          : null}
+                    {d.busy ? (
+                      <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded text-[11px] font-medium border border-amber-300 dark:border-amber-700/50">
+                        <svg className="animate-spin h-3 w-3 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Menyiapkan &amp; mengunggah ke server...
+                      </span>
+                    ) : d.stopped ? (
+                      <span className="text-rose-500 font-medium"> · dihentikan</span>
+                    ) : d.detectionDone ? (
+                      <span className="text-emerald-600 font-medium"> · selesai &amp; tersimpan</span>
+                    ) : d.paused ? (
+                      <span className="text-amber-500 font-medium"> · dijeda</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded text-[11px] font-medium border border-emerald-300 dark:border-emerald-700/50">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                        Deteksi live aktif
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center shrink-0">

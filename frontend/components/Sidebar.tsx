@@ -19,7 +19,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
     <aside
       className={`${collapsed ? "w-16" : "w-60"} shrink-0 bg-white border-r border-slate-200 dark:bg-slate-800 dark:border-slate-700 flex flex-col transition-all duration-200`}
     >
-      <div className={`h-16 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 ${collapsed ? "justify-center" : "px-5"}`}>
+      <Link href="/" className={`h-16 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 ${collapsed ? "justify-center" : "px-5"} hover:opacity-90 transition-opacity`}>
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-white overflow-hidden shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
@@ -30,7 +30,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
             <div className="text-[11px] text-slate-500">Cutting Monitoring</div>
           </div>
         )}
-      </div>
+      </Link>
       <nav className="flex-1 p-3 space-y-1">
         {MODULES.map((m) => {
           const active = isActive(m.href);

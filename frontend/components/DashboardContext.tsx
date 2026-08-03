@@ -158,6 +158,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const cfg = loadConfig();
     setError(null);
     setBusy(true);
+    // Switch to live phase INSTANTLY (<50ms) so user sees the monitor view & video without delay.
+    setPhase("live");
     // Stop any previous running session first (cancel + discard).
     const prev = sessRef.current;
     if (prev != null) {
@@ -189,7 +191,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setSessionId(session.id);
       await api.uploadVideo(session.id, f);
       setLastSession(session.id);
-      setPhase("live");
       startFlush();
 
       const ws = new WebSocket(wsUrl(`/ws/sessions/${session.id}`));

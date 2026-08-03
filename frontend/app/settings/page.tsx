@@ -8,6 +8,7 @@ import { dataUrlToFile } from "@/lib/frame";
 import ControlsPanel from "@/components/ControlsPanel";
 import InfoTip from "@/components/InfoTip";
 import RoiTuningPreview from "@/components/RoiTuningPreview";
+import { useDashboard } from "@/components/DashboardContext";
 import { useToast } from "@/components/Toast";
 
 const SPEED_PRESETS = [
@@ -20,6 +21,7 @@ const SPEED_PRESETS = [
 interface Analyze { image: string; mask: string; fgPct: number; width: number; height: number }
 
 export default function SettingsPage() {
+  const dashboard = useDashboard();
   const [config, setConfig] = useState<ActiveConfig | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function SettingsPage() {
   const save = () => {
     if (!config) return;
     saveConfig(config);
+    dashboard.refreshConfig();
     toast.show("Konfigurasi tersimpan.", "success");
   };
 
