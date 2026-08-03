@@ -52,10 +52,10 @@ export default function SessionTable({ sessions, selectedId, onSelect, onDelete 
                 <span className={`badge ${statusBadge[s.status] ?? statusBadge.created}`}>{s.status}</span>
               </td>
               <td className="px-3 py-2 text-slate-500">
-                {formatServerTime(s.started_at ?? s.created_at)}
+                {formatServerTime(s.started_at ?? s.created_at, s.timezone)}
               </td>
               <td className="px-3 py-2 text-slate-500">
-                {formatServerTime(s.ended_at)}
+                {formatServerTime(s.ended_at, s.timezone)}
               </td>
               <td className="px-3 py-2">
                 {s.status === "running" ? (
@@ -86,9 +86,9 @@ export default function SessionTable({ sessions, selectedId, onSelect, onDelete 
   );
 }
 
-function formatServerTime(value: string | null): string {
+function formatServerTime(value: string | null, timezone: string): string {
   if (!value) return "-";
   return new Date(value).toLocaleString("id-ID", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: timezone,
   });
 }

@@ -132,6 +132,15 @@ export default function DashboardPage() {
                 naturalWidth={d.frame.width} naturalHeight={d.frame.height} roi={d.roi}
                 initialTime={0} paused={d.paused} done={d.detectionDone}
                 onStats={d.setStats} onEnded={() => {}} />
+              {d.startupStatus && (
+                <div className="absolute inset-2 z-10 grid place-items-center rounded-lg bg-slate-950/70 text-center text-white">
+                  <div className="px-4">
+                    <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <p className="font-medium">{d.startupStatus}</p>
+                    <p className="mt-1 text-xs text-white/70">Video sudah tampil dari perangkat Anda. Proses tetap berjalan walau koneksi lambat.</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card flex flex-col min-h-0">
@@ -178,12 +187,12 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="mt-auto pt-3 flex flex-wrap gap-2">
-                <button onClick={d.togglePause} disabled={d.stopped || d.detectionDone} className="btn-muted">
+                <button onClick={d.togglePause} disabled={d.busy || d.stopped || d.detectionDone} className="btn-muted">
                   {d.paused
                     ? (<><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg> Lanjut</>)
                     : (<><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg> Jeda</>)}
                 </button>
-                <button onClick={d.stop} disabled={d.stopped || d.detectionDone} className="btn-danger">■ Stop</button>
+                <button onClick={d.stop} disabled={d.busy || d.stopped || d.detectionDone} className="btn-danger">■ Stop</button>
                 <button onClick={d.reset} className="btn-muted">+ Sesi baru</button>
                 <button onClick={() => setPreview(true)} className="btn-outline">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>

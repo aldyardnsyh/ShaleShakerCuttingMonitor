@@ -30,6 +30,7 @@ HEADER_BG = colors.HexColor("#E5E7EB")
 LINE = colors.HexColor("#000000")
 ORANGE = colors.HexColor("#F47A20")
 BLUE = colors.HexColor("#0EA5E9")
+REPORT_FORMAT_VERSION = "daily-shale-shaker-a4-v1"
 
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
 

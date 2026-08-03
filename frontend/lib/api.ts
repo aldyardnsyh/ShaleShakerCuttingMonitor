@@ -60,6 +60,7 @@ export interface SessionOut {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  timezone: string;
   summary?: SessionSummary;
   video_fps?: number | null;
   frame_width?: number | null;

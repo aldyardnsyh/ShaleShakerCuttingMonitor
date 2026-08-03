@@ -146,10 +146,10 @@ cp .env.example .env
 # Edit .env — set DOMAIN=shaleshakercuttingmonitor.web.id (required for HTTPS)
 
 bash setup.sh                     # Generate Caddyfile
-docker compose up -d --build       # Build & run
+docker compose up -d --build --force-recreate  # Build & run
 ```
 
-The app is now available at `https://shaleshakercuttingmonitor.web.id` with automatic HTTPS via Caddy + Let's Encrypt.
+The app is now available at `https://shaleshakercuttingmonitor.web.id` with automatic HTTPS via Caddy + Let's Encrypt. After every `git pull`, repeat `docker compose up -d --build --force-recreate`; without `--build`, Docker keeps the old backend image (old `report.py`) running.
 
 ---
 

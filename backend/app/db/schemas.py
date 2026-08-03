@@ -60,6 +60,7 @@ class SessionOut(BaseModel):
     started_at: datetime | None = None
     ended_at: datetime | None = None
     created_at: datetime
+    timezone: str
     video_fps: float | None = None
     frame_width: int | None = None
     frame_height: int | None = None
