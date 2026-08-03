@@ -275,8 +275,14 @@ def build_session_pdf(session: dict, summary: dict, rows: list, best_frame_jpg: 
 
     if best_frame_jpg:
         try:
+            from PIL import Image as PILImage
             img_io = io.BytesIO(best_frame_jpg)
-            img_obj = RLImage(img_io, width=182 * mm, height=86 * mm)
+            pil_img = PILImage.open(img_io)
+            img_w, img_h = pil_img.size
+            img_io.seek(0)
+            max_w = 182 * mm
+            aspect = img_h / img_w
+            img_obj = RLImage(img_io, width=max_w, height=max_w * aspect)
             img_box = Table([[img_obj]], colWidths=[186 * mm])
             img_box.setStyle(TableStyle([
                 ("GRID", (0, 0), (-1, -1), 0.6, LINE),

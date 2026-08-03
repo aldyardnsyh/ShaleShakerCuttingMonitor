@@ -93,6 +93,10 @@ def session_csv_path(session_id: int) -> Path:
     return settings.EXPORTS_DIR / f"session_{session_id}.csv"
 
 
+def session_best_frame_path(session_id: int) -> Path:
+    return settings.EXPORTS_DIR / f"session_{session_id}_best.jpg"
+
+
 CSV_COLUMNS = ["frame_idx", "ts", "fg_px", "roi_px", "fg_area_pct",
                "coverage_pct", "stone_count", "fps", "infer_ms", "model"]
 
@@ -181,6 +185,8 @@ def process_session(
 
         recent = deque(maxlen=15)  # smoothed processing FPS
         buffer: list[dict] = []    # measurements kept in memory until completion
+        best_jpg: bytes | None = None
+        best_score = -1.0
         processed = 0
         sum_pct = 0.0
         max_stones = 0
@@ -230,6 +236,11 @@ def process_session(
                     "vy": round(vy * vel_scale, 1),
                 })
             stone_count = len(blobs)
+            if metrics.coverage_pct > best_score:
+                best_score = metrics.coverage_pct
+                best_jpg = videolib.encode_jpeg_bytes(
+                    videolib.draw_overlay(frame_bgr, full_mask, roi_src)
+                )
 
             dt = time.perf_counter() - t0
             recent.append(dt)
@@ -280,6 +291,11 @@ def process_session(
                 write_session_csv(session_id, buffer)
             except Exception as e:
                 logger.warning("Gagal menulis CSV sesi %s: %s", session_id, e)
+            if best_jpg:
+                try:
+                    session_best_frame_path(session_id).write_bytes(best_jpg)
+                except Exception as e:
+                    logger.warning("Gagal menyimpan frame terbaik sesi %s: %s", session_id, e)
             crud.update_session_status(db, session_id, status="done", ended_at=server_now())
             summary = {"session_id": session_id, "frames_processed": processed,
                        "avg_coverage_pct": round(sum_pct / processed, 4) if processed else 0.0,
@@ -294,6 +310,11 @@ def process_session(
             write_session_csv(session_id, buffer)
         except Exception as e:                            # CSV is best-effort
             logger.warning("Gagal menulis CSV sesi %s: %s", session_id, e)
+        if best_jpg:
+            try:
+                session_best_frame_path(session_id).write_bytes(best_jpg)
+            except Exception as e:
+                logger.warning("Gagal menyimpan frame terbaik sesi %s: %s", session_id, e)
 
         crud.update_session_status(db, session_id, status="done", ended_at=server_now())
 

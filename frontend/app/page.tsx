@@ -132,15 +132,6 @@ export default function DashboardPage() {
                 naturalWidth={d.frame.width} naturalHeight={d.frame.height} roi={d.roi}
                 initialTime={0} paused={d.paused} done={d.detectionDone}
                 onStats={d.setStats} onEnded={() => {}} />
-              {d.startupStatus && (
-                <div className="absolute inset-2 z-10 grid place-items-center rounded-lg bg-slate-950/70 text-center text-white">
-                  <div className="px-4">
-                    <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    <p className="font-medium">{d.startupStatus}</p>
-                    <p className="mt-1 text-xs text-white/70">Video sudah tampil dari perangkat Anda. Proses tetap berjalan walau koneksi lambat.</p>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="card flex flex-col min-h-0">

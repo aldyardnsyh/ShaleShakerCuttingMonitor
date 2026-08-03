@@ -74,12 +74,20 @@ def draw_overlay(frame_bgr: np.ndarray, full_mask: np.ndarray, roi_src: list, al
 
 def encode_jpeg_b64(frame_bgr: np.ndarray, quality: int = 70, max_width: int = 960) -> str:
     """Encode a BGR frame to a base64 data URL JPEG (downscaled to save bandwidth)."""
+    buf = encode_jpeg_bytes(frame_bgr, quality, max_width)
+    if not buf:
+        return ""
+    b64 = base64.b64encode(buf).decode()
+    return f"data:image/jpeg;base64,{b64}"
+
+
+def encode_jpeg_bytes(frame_bgr: np.ndarray, quality: int = 70, max_width: int = 960) -> bytes:
+    """Encode a BGR frame to raw JPEG bytes (downscaled to save disk)."""
     h, w = frame_bgr.shape[:2]
     if w > max_width:
         scale = max_width / w
         frame_bgr = cv2.resize(frame_bgr, (max_width, int(h * scale)), interpolation=cv2.INTER_AREA)
     ok, buf = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
     if not ok:
-        return ""
-    b64 = base64.b64encode(buf.tobytes()).decode()
-    return f"data:image/jpeg;base64,{b64}"
+        return b""
+    return buf.tobytes()

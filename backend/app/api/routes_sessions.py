@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.db import crud
 from app.db.database import get_db
 from app.db.schemas import MeasurementOut, SessionCreate, SessionOut
-from app.workers.processor import process_session, request_cancel, session_csv_path, session_video_path
+from app.workers.processor import process_session, request_cancel, session_best_frame_path, session_csv_path, session_video_path
 from app.core.time import server_iso
 from app.config import settings
 
@@ -172,13 +172,16 @@ def get_tracks(session_id: int, db: Session = Depends(get_db)):
 
 @router.get("/sessions/{session_id}/export.csv")
 def export_csv(session_id: int, db: Session = Depends(get_db)):
-    if not crud.get_session(db, session_id):
+    s = crud.get_session(db, session_id)
+    if not s:
         raise HTTPException(404, "Session not found")
 
     # Prefer the auto-saved CSV written at completion (no DB read needed).
     saved = session_csv_path(session_id)
+    import re
+    safe_name = re.sub(r"[^a-zA-Z0-9 _\-]", "", s.name).strip().replace(" ", "_") or f"session_{session_id}"
     if saved.exists():
-        return FileResponse(str(saved), media_type="text/csv", filename=f"session_{session_id}.csv")
+        return FileResponse(str(saved), media_type="text/csv", filename=f"{safe_name}.csv")
 
     # Fallback: stream from DB (e.g., legacy sessions).
     rows = crud.list_measurements(db, session_id)
@@ -192,7 +195,7 @@ def export_csv(session_id: int, db: Session = Depends(get_db)):
             writer.writerow([r.frame_idx, r.ts.isoformat(), r.fg_px, r.roi_px, r.fg_area_pct, r.coverage_pct, r.stone_count, r.fps, r.infer_ms, r.model])
             yield buf.getvalue(); buf.seek(0); buf.truncate(0)
 
-    headers = {"Content-Disposition": f"attachment; filename=session_{session_id}.csv"}
+    headers = {"Content-Disposition": f'attachment; filename="{safe_name}.csv"'}
     return StreamingResponse(_gen(), media_type="text/csv", headers=headers)
 
 
@@ -204,9 +207,15 @@ def export_pdf(session_id: int, db: Session = Depends(get_db)):
     from app.core.report import REPORT_FORMAT_VERSION, build_session_pdf
     summary = crud.session_summary(db, session_id)
     rows = crud.list_measurements(db, session_id)
-    pdf = build_session_pdf(_to_out(s), summary, rows)
+    best_frame = None
+    bp = session_best_frame_path(session_id)
+    if bp.exists():
+        best_frame = bp.read_bytes()
+    pdf = build_session_pdf(_to_out(s), summary, rows, best_frame_jpg=best_frame)
+    import re
+    safe_name = re.sub(r"[^a-zA-Z0-9 _\-]", "", s.name).strip().replace(" ", "_") or f"session_{session_id}"
     headers = {
-        "Content-Disposition": f"attachment; filename=daily_shale_shaker_report_{session_id}.pdf",
+        "Content-Disposition": f'attachment; filename="{safe_name}.pdf"',
         "Cache-Control": "no-store, max-age=0",
         "X-Report-Format": REPORT_FORMAT_VERSION,
     }
