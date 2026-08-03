@@ -9,7 +9,7 @@ fi
 
 DOMAIN=$(grep -E '^DOMAIN=' .env | cut -d= -f2)
 
-if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "contoh-domain.com" ]; then
+if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "contoh-domain.com" ] || [ "$DOMAIN" = "your-domain.com" ]; then
   echo "ERROR: Set your actual domain in .env (DOMAIN=your-domain.com)"
   exit 1
 fi

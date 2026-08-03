@@ -103,25 +103,23 @@ def test_upload_endpoint_saves_file():
     assert session_video_path(sid).exists()
 
 
-def test_stop_discards_data():
-    """A cancelled run must not persist measurements and is marked cancelled."""
+def test_stop_saves_as_completed():
+    """A stopped run keeps the frames processed so far and is marked done."""
     from app.workers.processor import request_cancel
 
     sid = _create_session()
     _make_video(session_video_path(sid), n=6)
 
-    # Pre-set cancellation; the worker stops on the first frame and discards data.
+    # Pre-set cancellation; the worker stops on the first frame but still saves.
     request_cancel(sid)
     r = client.post(f"/api/sessions/{sid}/process", params={"max_frames": 5})
     assert r.status_code == 200, r.text
-    assert r.json()["status"] == "cancelled"
+    assert r.json()["status"] == "done"
 
-    # No measurements saved.
-    r = client.get(f"/api/sessions/{sid}/measurements")
-    assert r.status_code == 200 and r.json() == []
-
-    # Session marked cancelled.
-    assert client.get(f"/api/sessions/{sid}").json()["status"] == "cancelled"
+    # Session marked done with server-recorded start/end timestamps.
+    s = client.get(f"/api/sessions/{sid}").json()
+    assert s["status"] == "done"
+    assert s["started_at"] and s["ended_at"]
 
 
 def test_stop_endpoint_exists():

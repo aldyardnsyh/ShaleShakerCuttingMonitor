@@ -143,13 +143,13 @@ git clone https://github.com/aldyardnsyh/ShaleShakerCuttingMonitor.git
 cd ShaleShakerCuttingMonitor
 
 cp .env.example .env
-# Edit .env — set DOMAIN=your-domain.com (required for HTTPS)
+# Edit .env — set DOMAIN=shaleshakercuttingmonitor.web.id (required for HTTPS)
 
 bash setup.sh                     # Generate Caddyfile
 docker compose up -d --build       # Build & run
 ```
 
-The app is now available at `https://your-domain.com` with automatic HTTPS via Caddy + Let's Encrypt.
+The app is now available at `https://shaleshakercuttingmonitor.web.id` with automatic HTTPS via Caddy + Let's Encrypt.
 
 ---
 

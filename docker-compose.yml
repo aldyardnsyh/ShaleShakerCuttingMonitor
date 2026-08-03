@@ -1,6 +1,6 @@
 # Production-style compose: app + Caddy reverse proxy with auto HTTPS.
 # Multi-stage build (frontend static -> backend image) via root Dockerfile.
-# Set DOMAIN=<your-domain.com> in .env before first run.
+# Set DOMAIN=shaleshakercuttingmonitor.web.id in .env before first run.
 services:
   app:
     build:

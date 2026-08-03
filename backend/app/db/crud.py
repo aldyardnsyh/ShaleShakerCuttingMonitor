@@ -94,7 +94,14 @@ def get_session(db: Session, session_id: int) -> SessionModel | None:
 
 
 def list_sessions(db: Session) -> list[SessionModel]:
-    return list(db.query(SessionModel).order_by(SessionModel.id.desc()).all())
+    # History contains only successfully completed analyses. A user stop is
+    # saved by the worker as "done"; failed runs are deleted by the worker.
+    return list(
+        db.query(SessionModel)
+        .filter(SessionModel.status == "done")
+        .order_by(SessionModel.id.desc())
+        .all()
+    )
 
 
 def delete_session(db: Session, session_id: int) -> bool:

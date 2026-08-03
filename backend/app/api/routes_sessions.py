@@ -14,6 +14,7 @@ from app.db import crud
 from app.db.database import get_db
 from app.db.schemas import MeasurementOut, SessionCreate, SessionOut
 from app.workers.processor import process_session, request_cancel, session_csv_path, session_video_path
+from app.core.time import server_iso
 
 router = APIRouter(tags=["sessions"])
 
@@ -28,9 +29,9 @@ def _to_out(s) -> dict:
         "roi_json": json.loads(s.roi_json),
         "stride": s.stride,
         "status": s.status,
-        "started_at": s.started_at,
-        "ended_at": s.ended_at,
-        "created_at": s.created_at,
+        "started_at": server_iso(s.started_at),
+        "ended_at": server_iso(s.ended_at),
+        "created_at": server_iso(s.created_at),
         "video_fps": s.video_fps,
         "frame_width": s.frame_width,
         "frame_height": s.frame_height,
@@ -105,8 +106,7 @@ async def process(
 
 @router.post("/sessions/{session_id}/stop")
 def stop(session_id: int, db: Session = Depends(get_db)):
-    """Request cancellation of a running session. Partial data is discarded
-    by the worker; the session is marked 'cancelled'."""
+    """Stop a running session; processed data is saved as a completed run."""
     if not crud.get_session(db, session_id):
         raise HTTPException(404, "Session not found")
     request_cancel(session_id)

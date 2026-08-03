@@ -14,10 +14,8 @@ import logging
 import threading
 import time
 from collections import deque
-from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
-from zoneinfo import ZoneInfo
 
 import cv2
 
@@ -28,6 +26,7 @@ from app.core.metrics import compute_metrics, mask_to_blobs
 from app.core.refine import refine_mask
 from app.core.roi import warp_mask_to_full, warp_to_roi
 from app.core.tracking import MultiObjectTracker
+from app.core.time import server_now, server_iso
 from app.db import crud
 from app.db.database import SessionLocal
 from app.db.models import Session as SessionModel
@@ -118,10 +117,7 @@ def write_session_csv(session_id: int, rows: list[dict]) -> Path:
 
 
 def _server_time_iso() -> str:
-    try:
-        return datetime.now(ZoneInfo(settings.TIMEZONE)).isoformat()
-    except Exception:
-        return datetime.now().astimezone().isoformat()
+    return server_iso(server_now()) or ""
 
 
 def process_session(
@@ -161,7 +157,7 @@ def process_session(
         session.frame_width = int(vinfo.width)
         session.frame_height = int(vinfo.height)
         session.status = "running"
-        session.started_at = datetime.utcnow()
+        session.started_at = server_now()
         db.commit()
 
         video_fps = float(vinfo.fps) or 25.0
@@ -244,7 +240,7 @@ def process_session(
             # loop stays the priority; persistence happens once at the end.
             buffer.append({
                 "session_id": session_id,
-                "ts": datetime.utcnow(),
+                "ts": server_now(),
                 "frame_idx": frame_idx,
                 "fg_px": metrics.fg_px,
                 "roi_px": metrics.roi_px,
@@ -277,11 +273,18 @@ def process_session(
                 })
 
         if cancelled:
-            # Discard the in-memory buffer — a stopped run is not saved.
-            crud.update_session_status(db, session_id, status="cancelled", ended_at=datetime.utcnow())
-            summary = {"session_id": session_id, "frames_processed": 0,
-                       "avg_coverage_pct": 0.0, "max_stone_count": 0, "status": "cancelled"}
-            logger.info("Session %s cancelled — in-memory buffer discarded (nothing saved).", session_id)
+            # Stop is a normal completion: save the frames processed so far.
+            crud.delete_measurements(db, session_id)
+            crud.add_measurements_bulk(db, buffer)
+            try:
+                write_session_csv(session_id, buffer)
+            except Exception as e:
+                logger.warning("Gagal menulis CSV sesi %s: %s", session_id, e)
+            crud.update_session_status(db, session_id, status="done", ended_at=server_now())
+            summary = {"session_id": session_id, "frames_processed": processed,
+                       "avg_coverage_pct": round(sum_pct / processed, 4) if processed else 0.0,
+                       "max_stone_count": max_stones, "status": "done"}
+            logger.info("Session %s stopped by user and saved as completed.", session_id)
             return summary
 
         # ---- Persist once, at the end: bulk DB insert + auto CSV ----
@@ -292,7 +295,7 @@ def process_session(
         except Exception as e:                            # CSV is best-effort
             logger.warning("Gagal menulis CSV sesi %s: %s", session_id, e)
 
-        crud.update_session_status(db, session_id, status="done", ended_at=datetime.utcnow())
+        crud.update_session_status(db, session_id, status="done", ended_at=server_now())
 
         summary = {
             "session_id": session_id,
@@ -305,7 +308,7 @@ def process_session(
         return summary
     except Exception as e:
         try:
-            crud.update_session_status(db, session_id, status="error")
+            crud.delete_session(db, session_id)
         except Exception:
             pass
         logger.exception("Session %s gagal diproses: %s", session_id, e)

@@ -27,7 +27,8 @@ export default function SessionTable({ sessions, selectedId, onSelect, onDelete 
             <th className="px-3 py-2 font-semibold">Nama</th>
             <th className="px-3 py-2 font-semibold">Model</th>
             <th className="px-3 py-2 font-semibold">Status</th>
-            <th className="px-3 py-2 font-semibold">Dibuat</th>
+            <th className="px-3 py-2 font-semibold">Mulai</th>
+            <th className="px-3 py-2 font-semibold">Selesai</th>
             <th className="px-3 py-2 font-semibold">Aksi</th>
           </tr>
         </thead>
@@ -51,9 +52,10 @@ export default function SessionTable({ sessions, selectedId, onSelect, onDelete 
                 <span className={`badge ${statusBadge[s.status] ?? statusBadge.created}`}>{s.status}</span>
               </td>
               <td className="px-3 py-2 text-slate-500">
-                {new Date(s.created_at).toLocaleDateString("id-ID", {
-                  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                })}
+                {formatServerTime(s.started_at ?? s.created_at)}
+              </td>
+              <td className="px-3 py-2 text-slate-500">
+                {formatServerTime(s.ended_at)}
               </td>
               <td className="px-3 py-2">
                 {s.status === "running" ? (
@@ -82,4 +84,11 @@ export default function SessionTable({ sessions, selectedId, onSelect, onDelete 
       </table>
     </div>
   );
+}
+
+function formatServerTime(value: string | null): string {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("id-ID", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
 }
