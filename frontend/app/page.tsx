@@ -110,11 +110,32 @@ export default function DashboardPage() {
                 </dl>
                 <Link href="/settings/" className="text-xs text-brand-dark hover:underline">Ubah di Settings →</Link>
               </div>
-              <div className="mt-auto">
+              <div className="mt-auto space-y-2">
                 <div className="card-title">3 · Jalankan</div>
-                <button onClick={d.start} disabled={!canStart} className="btn-primary w-full">
-                  {d.busy ? "Menyiapkan…" : "Start Deteksi Live"}
+                <button onClick={d.start} disabled={!canStart || d.busy} className="btn-primary w-full flex items-center justify-center gap-2">
+                  {d.busy ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>{d.startStatus || "Menyiapkan..."}</span>
+                    </>
+                  ) : (
+                    "Start Deteksi Live"
+                  )}
                 </button>
+                {d.busy && (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 p-3 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      {d.startStatus || "Memproses..."}
+                    </div>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                      Mohon tunggu sejenak. Halaman monitor live akan terbuka secara otomatis begitu koneksi server terhubung.
+                    </p>
+                  </div>
+                )}
                 {!canStart && !d.busy && <p className="text-[11px] text-slate-500 mt-2">Lengkapi video + 4 titik ROI untuk mengaktifkan.</p>}
               </div>
             </div>
@@ -153,15 +174,7 @@ export default function DashboardPage() {
                   <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 truncate">{d.name}</h2>
                   <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
                     Persentase cutting menutupi area shale shaker
-                    {d.busy ? (
-                      <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded text-[11px] font-medium border border-amber-300 dark:border-amber-700/50">
-                        <svg className="animate-spin h-3 w-3 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Menyiapkan &amp; mengunggah ke server...
-                      </span>
-                    ) : d.stopped ? (
+                    {d.stopped ? (
                       <span className="text-rose-500 font-medium"> · dihentikan</span>
                     ) : d.detectionDone ? (
                       <span className="text-emerald-600 font-medium"> · selesai &amp; tersimpan</span>

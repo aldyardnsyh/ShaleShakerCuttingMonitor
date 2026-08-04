@@ -29,6 +29,7 @@ interface Ctx {
   setStats: (s: Stats) => void;
   progress: Progress;
   busy: boolean;
+  startStatus: string | null;
   error: string | null;
   paused: boolean;
   stopped: boolean;
@@ -68,6 +69,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<Stats>({ t: 0, coverage_pct: 0, fg_area_pct: 0, stone_count: 0, playbackFps: 0, playing: false });
   const [progress, setProgress] = useState<Progress>({ frames: 0, coverage: 0, stones: 0, detectFps: 0 });
   const [busy, setBusy] = useState(false);
+  const [startStatus, setStartStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [stopped, setStopped] = useState(false);
@@ -158,8 +160,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const cfg = loadConfig();
     setError(null);
     setBusy(true);
-    // Switch to live phase INSTANTLY (<50ms) so user sees the monitor view & video without delay.
-    setPhase("live");
+    setStartStatus("Membuat sesi di server...");
+
     // Stop any previous running session first (cancel + discard).
     const prev = sessRef.current;
     if (prev != null) {
@@ -176,6 +178,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPaused(false);
     setStopped(false);
     setDetectionDone(false);
+
     try {
       const session = await api.createSession({
         name,
@@ -189,13 +192,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       });
       sessRef.current = session.id;
       setSessionId(session.id);
+
+      setStartStatus("Mengunggah video ke server...");
       await api.uploadVideo(session.id, f);
       setLastSession(session.id);
+
+      setStartStatus("Menghubungkan layanan deteksi...");
       startFlush();
 
       const ws = new WebSocket(wsUrl(`/ws/sessions/${session.id}`));
       wsRef.current = ws;
-      ws.onopen = () => { setBusy(false); };
+      ws.onopen = () => {
+        setBusy(false);
+        setStartStatus(null);
+        setPhase("live"); // Switch to live phase ONLY after backend WS is connected!
+      };
       ws.onmessage = (ev) => {
         const msg: FramePayload = JSON.parse(ev.data);
         if (msg.done) {
@@ -203,6 +214,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           stopFlush();
           setDetectionDone(true);
           setBusy(false);
+          setStartStatus(null);
           ws.close();
           toast.show(`Deteksi selesai. ${progressBufRef.current.frames} frame dianalisis.`, "success");
           return;
@@ -230,6 +242,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const msg = "Koneksi deteksi terputus.";
         setError(msg);
         setBusy(false);
+        setStartStatus(null);
         toast.show(msg, "error");
       };
     } catch (e) {
@@ -237,6 +250,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setError(msg);
       toast.show(msg, "error");
       setBusy(false);
+      setStartStatus(null);
       setPhase("setup");
     }
   };
@@ -289,6 +303,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPaused(false);
     setStopped(false);
     setDetectionDone(false);
+    setStartStatus(null);
     setName(`Sesi ${new Date().toLocaleString("id-ID")}`);
   };
 
@@ -319,7 +334,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     config, refreshConfig, fileName, objUrl, frame, roi, setRoi: updateRoi,
     name, setName, phase, sessionId, liveFrames, stats, setStats, progress,
-    busy, error, paused, stopped, detectionDone, sourceVideos, loadSourceVideos, pickSourceVideo,
+    busy, startStatus, error, paused, stopped, detectionDone, sourceVideos, loadSourceVideos, pickSourceVideo,
     subscribeLive, unsubscribeLive,
     togglePause, replay, pickFile, start, stop, reset,
   };
